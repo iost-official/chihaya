@@ -4,6 +4,7 @@
 package bittorrent
 
 import (
+	"fmt"
 	"net"
 	"time"
 
@@ -26,7 +27,13 @@ func PeerIDFromBytes(b []byte) PeerID {
 	return PeerID(buf)
 }
 
+// String with fmt.Stringer and returns the base16 encoded PeerID.
 func (p PeerID) String() string {
+	return fmt.Sprintf("%x", p[:])
+}
+
+// RawString returns a 20-byte string of the raw bytes of the ID.
+func (p PeerID) RawString() string {
 	return string(p[:])
 }
 
@@ -72,7 +79,13 @@ func InfoHashFromString(s string) InfoHash {
 	return InfoHash(buf)
 }
 
+// String with fmt.Stringer returns base16 encoded InfoHash.
 func (i InfoHash) String() string {
+	return fmt.Sprintf("%x", i[:])
+}
+
+// RawString returns a 20-byte string of the raw bytes of the InfoHash.
+func (i InfoHash) RawString() string {
 	return string(i[:])
 }
 
@@ -210,6 +223,20 @@ type Peer struct {
 	ID   PeerID
 	IP   IP
 	Port uint16
+}
+
+// String with fmt.Stringer and returns a human-readable representation.
+func (p Peer) String() string {
+	return fmt.Sprintf("%s@[%s]:%d", p.ID.String(), p.IP.String(), p.Port)
+}
+
+// LogFields renders current peer as Logrus fields.
+func (p Peer) LogFields() log.Fields {
+	return log.Fields{
+		"ID":   p.ID,
+		"IP":   p.IP,
+		"port": p.Port,
+	}
 }
 
 // Equal reports whether p and x are the same.
