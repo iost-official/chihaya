@@ -1,15 +1,6 @@
 # Chihaya
 
-[![Build Status](https://api.travis-ci.org/chihaya/chihaya.svg?branch=master)](https://travis-ci.org/chihaya/chihaya)
-[![Docker Repository on Quay.io](https://quay.io/repository/jzelinskie/chihaya/status "Docker Repository on Quay.io")](https://quay.io/repository/jzelinskie/chihaya)
-[![Go Report Card](https://goreportcard.com/badge/github.com/chihaya/chihaya)](https://goreportcard.com/report/github.com/chihaya/chihaya)
-[![GoDoc](https://godoc.org/github.com/chihaya/chihaya?status.svg)](https://godoc.org/github.com/chihaya/chihaya)
-![Lines of Code](https://tokei.rs/b1/github/chihaya/chihaya)
-[![License](https://img.shields.io/badge/license-BSD-blue.svg)](https://en.wikipedia.org/wiki/BSD_licenses#2-clause_license_.28.22Simplified_BSD_License.22_or_.22FreeBSD_License.22.29)
-[![IRC Channel](https://img.shields.io/badge/freenode-%23chihaya-blue.svg "IRC Channel")](http://webchat.freenode.net/?channels=chihaya)
-
 **Note:** The master branch may be in an unstable or even broken state during development.
-Please use [releases] instead of the master branch in order to get stable binaries.
 
 Chihaya is an open source [BitTorrent tracker] written in [Go].
 
@@ -21,7 +12,6 @@ Differentiating features include:
 - [YAML] configuration
 - Metrics via [Prometheus]
 
-[releases]: https://github.com/chihaya/chihaya/releases
 [BitTorrent tracker]: http://en.wikipedia.org/wiki/BitTorrent_tracker
 [Go]: https://golang.org
 [YAML]: http://yaml.org
@@ -68,7 +58,7 @@ To produce a build with safe versions of dependencies, follow the instructions f
 
 ```sh
 $ mkdir chihaya && export GOPATH=$PWD/chihaya
-$ go get -t -u github.com/chihaya/chihaya/...
+$ go get -t -u github.com/iost-official/chihaya/...
 $ $GOPATH/bin/chihaya --help
 ```
 
@@ -81,21 +71,15 @@ Reproducible builds are handled by using [dep] to vendor dependencies.
 
 ```sh
 $ mkdir chihaya && export GOPATH=$PWD/chihaya
-$ git clone git@github.com:chihaya/chihaya.git $GOPATH/src/github.com/chihaya/chihaya
-$ cd $GOPATH/src/github.com/chihaya/chihaya
+$ git clone git@github.com:iost-official/chihaya.git $GOPATH/src/github.com/iost-official/chihaya
+$ cd $GOPATH/src/github.com/iost-official/chihaya
 $ dep ensure
-$ go install github.com/chihaya/chihaya/cmd/...
+$ go install github.com/iost-official/chihaya/cmd/...
 $ $GOPATH/bin/chihaya --help
 ```
 
 [dep]: https://github.com/golang/dep
 
-#### Docker
-
-Docker containers are available for [HEAD] and [stable] releases.
-
-[HEAD]: https://quay.io/jzelinskie/chihaya-git
-[stable]: https://quay.io/jzelinskie/chihaya
 
 #### Testing
 
@@ -110,14 +94,12 @@ $ go test -bench $(go list ./...)
 
 Long-term discussion and bug reports are maintained via [GitHub Issues].
 Code review is done via [GitHub Pull Requests].
-Real-time discussion is done via [freenode IRC].
 
 For more information read [CONTRIBUTING.md].
 
-[GitHub Issues]: https://github.com/chihaya/chihaya/issues
-[GitHub Pull Requests]: https://github.com/chihaya/chihaya/pulls
-[freenode IRC]: http://webchat.freenode.net/?channels=chihaya
-[CONTRIBUTING.md]: https://github.com/chihaya/chihaya/blob/master/CONTRIBUTING.md
+[GitHub Issues]: https://github.com/iost-official/chihaya/issues
+[GitHub Pull Requests]: https://github.com/iost-official/chihaya/pulls
+[CONTRIBUTING.md]: https://github.com/iost-official/chihaya/blob/master/CONTRIBUTING.md
 
 ### Architecture
 
@@ -155,8 +137,3 @@ After all PreHooks have executed, any missing response fields that are required 
 PostHooks are asynchronous tasks that occur after a response has been delivered to the client.
 Request data is written to the storage asynchronously in one of these PostHooks.
 
-## Related projects
-
-- [BitTorrent.org](https://github.com/bittorrent/bittorrent.org): a static website containing the BitTorrent spec and all BEPs
-- [OpenTracker](http://erdgeist.org/arts/software/opentracker): a popular BitTorrent tracker written in C
-- [Ocelot](https://github.com/WhatCD/Ocelot): a private BitTorrent tracker written in C++
