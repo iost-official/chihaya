@@ -127,6 +127,35 @@ func NewFrontend(logic frontend.TrackerLogic, cfg Config) (*Frontend, error) {
 	return f, nil
 }
 
+const (
+ 	// max size a client->server packet can have.
+ 	maxUDPPacketSize = 2048
+ )
+
+ type pooledBuffer struct {
+ 	original []byte
+ 	b        []byte
+ 	wg       sync.WaitGroup
+ 	c        chan struct{}
+ }
+ 
+ // reclaimAfterUse returns the buffer to the BytePool after goroutines finished.
+ func (p *pooledBuffer) reclaimAfterUse(pool *bytepool.BytePool) {
+ 	<-p.c
+ 	p.wg.Wait()
+ 	pool.Put(p.original)
+ }
+ 
+ func (p *pooledBuffer) free() {
+ 	close(p.c)
+ }
+
+ // newPooledBuffer creates a new pooled buffer.
+ func newPooledBuffer(pool *bytepool.BytePool) *pooledBuffer {
+ 	b := pool.Get()
+ 	return &pooledBuffer{b: b, original: b, c: make(chan struct{})}
+ }
+
 // Stop provides a thread-safe way to shutdown a currently running Frontend.
 func (t *Frontend) Stop() <-chan error {
 	select {
@@ -163,10 +192,18 @@ func (t *Frontend) listenAndServe() error {
 		return err
 	}
 
-	pool := bytepool.New(2048)
+	pool := bytepool.New(1024 * 1024) // 1MB
 
 	t.wg.Add(1)
 	defer t.wg.Done()
+
+	// get a new large buffer.
+	buf := newPooledBuffer(pool)
+	// reclaim this buffer after use. reclaimAfterUse will block until free is called.
+	go buf.reclaimAfterUse(pool)
+	defer func() {
+		buf.free()
+	}()
 
 	for {
 		// Check to see if we need to shutdown.
@@ -177,11 +214,20 @@ func (t *Frontend) listenAndServe() error {
 		default:
 		}
 
-		// Read a UDP packet into a reusable buffer.
-		buffer := pool.Get()
-		n, addr, err := t.socket.ReadFromUDP(buffer)
+		if len(buf.b) < maxUDPPacketSize {
+			// Not enough space to hold a packet, remake.
+			log.Debug("udp: remaking listenAndServe buffer")
+			buf.free()
+
+			buf = newPooledBuffer(pool)
+			log.Debug("got a buffer with", log.Fields{"len": len(buf.b)})
+			go buf.reclaimAfterUse(pool)
+		}
+
+		// Read a UDP packet into the large buffer.
+		n, addr, err := t.socket.ReadFromUDP(buf.b)
+
 		if err != nil {
-			pool.Put(buffer)
 			if netErr, ok := err.(net.Error); ok && netErr.Temporary() {
 				// A temporary failure is not fatal; just pretend it never happened.
 				continue
@@ -191,14 +237,20 @@ func (t *Frontend) listenAndServe() error {
 
 		// We got nothin'
 		if n == 0 {
-			pool.Put(buffer)
 			continue
 		}
 
+		// make a slice from the large buffer that contains the packet.
+		msg := buf.b[:n]
+		// Advance the start of the large buffer.
+		buf.b = buf.b[n:]
 		t.wg.Add(1)
-		go func() {
-			defer t.wg.Done()
-			defer pool.Put(buffer)
+		buf.wg.Add(1)
+		go func(w *sync.WaitGroup) {
+			defer func() {
+				t.wg.Done()
+				w.Done()
+			}()
 
 			if ip := addr.IP.To4(); ip != nil {
 				addr.IP = ip
@@ -211,7 +263,7 @@ func (t *Frontend) listenAndServe() error {
 			}
 			action, af, err := t.handleRequest(
 				// Make sure the IP is copied, not referenced.
-				Request{buffer[:n], append([]byte{}, addr.IP...)},
+				Request{msg, append([]byte{}, addr.IP...)},
 				ResponseWriter{t.socket, addr},
 			)
 			if t.EnableRequestTiming {
@@ -219,7 +271,7 @@ func (t *Frontend) listenAndServe() error {
 			} else {
 				recordResponseDuration(action, af, err, time.Duration(0))
 			}
-		}()
+		}(&buf.wg)
 	}
 }
 
